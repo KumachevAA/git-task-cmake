@@ -5,6 +5,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/ocl.hpp>
+#include <opencv2/videoio.hpp>
+#include <opencv2/core/ocl_genbase.hpp>
 #include <iostream>
 
 using namespace std;
@@ -13,57 +15,53 @@ using namespace cv;
 int main()
 {
     ocl::setUseOpenCL(true);
+    VideoCapture video("video.mp4");
 
-    string image_path = "sample.jpg";
-    Mat img = imread(image_path, IMREAD_COLOR);
-
-    if (img.empty())
+    if (!video.isOpened())
     {
-        cout << "Could not read the image: " << image_path << endl;
+        cout << "An error occured - could not load video" << endl;
         return 1;
     }
 
-    Mat img_gray;
-    cvtColor(img, img_gray, COLOR_BGR2GRAY);
-    equalizeHist(img_gray, img_gray);
+    CascadeClassifier faceFinder;
 
-    string face_cascade_path = "haarcascade_frontalface_alt2.xml";
-    string eyes_cascade_path = "haarcascade_eye.xml";
-
-    CascadeClassifier face_cascade;
-    CascadeClassifier eyes_cascade;
-
-    if (!face_cascade.load(face_cascade_path))
+    if (!faceFinder.load("haarcascade_frontalface_alt.xml"))
     {
-        cout << "Could not load face cascade: " << face_cascade_path << endl;
+        cout << "An error occured - could not load cascade" << endl;
         return 1;
     }
 
-    if (!eyes_cascade.load(eyes_cascade_path))
+    int ex = static_cast<int>(video.get(CAP_PROP_FOURCC));
+    char EXT[] = { (char)(ex & 0XFF) , (char)((ex & 0XFF00) >> 8),(char)((ex & 0XFF0000) >> 16),(char)((ex & 0XFF000000) >> 24), 0 };
+    cout << EXT << endl;
+
+    float fps = video.get(CAP_PROP_FPS);
+    Size size = Size((int)video.get(CAP_PROP_FRAME_WIDTH), (int)video.get(CAP_PROP_FRAME_HEIGHT));
+
+    VideoWriter writer("output.mp4", ex, fps, size, true);
+
+    if (!writer.isOpened())
     {
-        cout << "Could not load face cascade: " << eyes_cascade_path << endl;
+        cout << "An error occured - could not open writer" << endl;
         return 1;
     }
 
-    vector<Rect> faces;
-    face_cascade.detectMultiScale(img_gray, faces);
-    for (auto& face: faces)
+    UMat frame;
+    UMat frame_gray;
+
+    while (video.read(frame))
     {
-        Mat face_gray = img_gray(face);
+        cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
+        equalizeHist(frame_gray, frame_gray);
 
-        vector<Rect> eyes;
-        eyes_cascade.detectMultiScale(face_gray, eyes);
+        vector<Rect> faces;
+        faceFinder.detectMultiScale(frame_gray, faces);
 
-        for (auto& eye : eyes)
+        for (auto& face: faces)
         {
-            Rect eyePos = Rect(eye.x + face.x, eye.y + face.y, eye.width, eye.height);
-            rectangle(img, eyePos, Scalar(0, 0, 0), 1);
+            rectangle(frame, face, Scalar(0, 0, 255), 5);
         }
 
-        rectangle(img, face, Scalar(0, 0, 0), 2);
+        writer.write(frame);
     }
-
-    imshow("Display window", img);
-    waitKey(0);
-    return 0;
 }
