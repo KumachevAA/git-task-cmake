@@ -36,6 +36,7 @@ int main()
     cout << EXT << endl;
 
     float fps = video.get(CAP_PROP_FPS);
+    int frames = (int) video.get(CAP_PROP_FRAME_COUNT);
     Size size = Size((int)video.get(CAP_PROP_FRAME_WIDTH), (int)video.get(CAP_PROP_FRAME_HEIGHT));
 
     VideoWriter writer("output.mp4", ex, fps, size, true);
@@ -48,9 +49,11 @@ int main()
 
     UMat frame;
     UMat frame_gray;
+    int frame_num = 0;
 
     while (video.read(frame))
     {
+        frame_num++;
         cvtColor(frame, frame_gray, COLOR_BGR2GRAY);
         equalizeHist(frame_gray, frame_gray);
 
@@ -63,5 +66,7 @@ int main()
         }
 
         writer.write(frame);
+
+        cout << frame << ' / ' << frames << endl;
     }
 }
