@@ -67,6 +67,6 @@ int main()
 
         writer.write(frame);
 
-        cout << frame_num << ' / ' << frames << endl;
+        cout << frame_num << " / " << frames << endl;
     }
 }
